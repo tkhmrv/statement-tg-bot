@@ -102,9 +102,14 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ("/status", "Информация о текущем чате"),
         ("/activate", "Показать кнопку активации (только для групп)"),
         ("/menu", "Показать это меню со всеми командами"),
+        ("/help", "Показать это меню со всеми командами"),
     ]
     text = "\uD83D\uDCDD Доступные команды:\n\n" + "\n".join([f"{cmd} — {desc}" for cmd, desc in commands])
     await update.message.reply_text(text)
+
+# /help — синоним /menu
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await menu(update, context)
 
 # Запуск
 if __name__ == "__main__":
@@ -117,6 +122,7 @@ if __name__ == "__main__":
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(CommandHandler("activate", send_activation_button))
     app.add_handler(CommandHandler("menu", menu))
+    app.add_handler(CommandHandler("help", help_command))
     # Обработка нажатия на кнопку "Меню" в чате
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex("^Меню$"), menu))
 
