@@ -1,11 +1,13 @@
 import logging
 import os
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     ContextTypes,
     CallbackQueryHandler,
+    MessageHandler,
+    filters,
 )
 from dotenv import load_dotenv
 
@@ -26,10 +28,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logging.info(f"/start от пользователя {full_name} (id={user.id})")
 
+    # Добавляем кнопку "Меню" в чат
+    reply_markup = ReplyKeyboardMarkup([["Меню"]], resize_keyboard=True)
+
     await update.message.reply_text(
         f"👋 Привет, {full_name}!\n\n"
-        f"Я бот фотостудии и помогу вам получать уведомления в Telegram-группах.\n"
-        f"Добавьте меня в нужный чат и нажмите кнопку активации внутри него."
+        f"Это бот фотостудии Statement. Я умею отправлять фидбек с сайта в Telegram-группы.\n"
+        f"Добавьте меня в нужный чат и нажмите кнопку активации внутри него.",
+        reply_markup=reply_markup
     )
 
 # /status — информация о текущем чате
@@ -41,9 +47,9 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info(f"/status в чате {chat_title} (id={chat_id})")
 
     await update.message.reply_text(
-        f"ℹ️ Текущий чат:\n"
-        f"• Название: *{chat_title}*\n"
-        f"• ID: `{chat_id}`",
+        f"ℹ️ Текущий чат:\n\n"
+        f"- Название: *{chat_title}*\n"
+        f"- ID: `{chat_id}`",
         parse_mode="Markdown"
     )
 
@@ -60,9 +66,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await query.edit_message_text(
         f"✅ Бот активирован для этого чата!\n\n"
-        f"📍 Название чата: *{chat_title}*\n"
-        f"🆔 ID: `{chat_id}`\n\n"
-        f"📥 Пожалуйста, скопируйте этот ID и вставьте его в админку сайта.",
+        f"- Название чата: *{chat_title}*\n"
+        f"- ID: `{chat_id}`\n\n"
+        f" Пожалуйста, скопируйте название чата и ID и вставьте их в админку сайта.",
         parse_mode="Markdown"
     )
 
@@ -85,9 +91,20 @@ async def send_activation_button(update: Update, context: ContextTypes.DEFAULT_T
 
     await context.bot.send_message(
         chat_id=chat_id,
-        text="👋 Бот добавлен в этот чат. Нажмите кнопку ниже, чтобы активировать его:",
+        text="👋 Бот успешно добавлен в этот чат. Нажмите кнопку ниже, чтобы активировать его:",
         reply_markup=reply_markup
     )
+
+# /menu — показать все команды
+async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    commands = [
+        ("/start", "Приветствие и краткая информация о боте"),
+        ("/status", "Информация о текущем чате"),
+        ("/activate", "Показать кнопку активации (только для групп)"),
+        ("/menu", "Показать это меню со всеми командами"),
+    ]
+    text = "\uD83D\uDCDD Доступные команды:\n\n" + "\n".join([f"{cmd} — {desc}" for cmd, desc in commands])
+    await update.message.reply_text(text)
 
 # Запуск
 if __name__ == "__main__":
@@ -99,6 +116,9 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("status", status))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(CommandHandler("activate", send_activation_button))
+    app.add_handler(CommandHandler("menu", menu))
+    # Обработка нажатия на кнопку "Меню" в чате
+    app.add_handler(MessageHandler(filters.TEXT & filters.Regex("^Меню$"), menu))
 
     logging.info("✅ Бот успешно запущен и ждет команды.")
     app.run_polling()
