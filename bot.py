@@ -119,7 +119,7 @@ if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     # Установка команд в меню Telegram
-    async def set_commands():
+    async def set_commands(app):
         await app.bot.set_my_commands([
             BotCommand("start", "Приветствие"),
             BotCommand("status", "Информация о текущем чате"),
