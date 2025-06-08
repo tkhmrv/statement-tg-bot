@@ -146,14 +146,23 @@ async def main():
     app.add_handler(CallbackQueryHandler(button_handler))
 
     # Webhook-обработчик
-    async def webhook_handler(request):
+    async def webhook_handler_async(request):
         data = await request.get_data()
         update = Update.de_json(data.decode("utf-8"), app.bot)
         await app.process_update(update)
         return "OK", 200
 
+    # Синхронная обертка для webhook-обработчика
+    def webhook_handler():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(webhook_handler_async(request))
+        finally:
+            loop.close()
+
     # Регистрируем обработчик во Flask
-    flask_app.add_url_rule(WEBHOOK_PATH, "webhook", lambda: webhook_handler(request), methods=["POST"])
+    flask_app.add_url_rule(WEBHOOK_PATH, "webhook", webhook_handler, methods=["POST"])
 
     # Стартуем Flask в фоне
     port = int(os.environ.get("PORT", 3000))
