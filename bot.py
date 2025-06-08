@@ -154,21 +154,19 @@ async def main():
 
     # Синхронная обертка для webhook-обработчика
     def webhook_handler():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            json_data = request.get_json(force=True)  # тут уже dict
-            return loop.run_until_complete(webhook_handler_async(json_data))
-        finally:
-            loop.close()
+        json_data = request.get_json(force=True)
+        return asyncio.run_coroutine_threadsafe(webhook_handler_async(json_data), loop).result()
 
     # Регистрируем обработчик во Flask
     flask_app.add_url_rule(WEBHOOK_PATH, "webhook", webhook_handler, methods=["POST"])
 
-    # Стартуем Flask в фоне
-    port = int(os.environ.get("PORT", 3000))
+    # Создаем и сохраняем event loop
     loop = asyncio.get_event_loop()
-    loop.run_in_executor(None, lambda: flask_app.run(host="0.0.0.0", port=port))
+
+    # Стартуем Flask в отдельном потоке
+    port = int(os.environ.get("PORT", 3000))
+    from threading import Thread
+    Thread(target=lambda: flask_app.run(host="0.0.0.0", port=port), daemon=True).start()
 
     # Ожидаем, пока сервер станет доступен
     await wait_for_server_ready(WEBHOOK_HOST)
