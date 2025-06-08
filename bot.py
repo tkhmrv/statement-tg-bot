@@ -138,6 +138,7 @@ async def main():
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     await set_commands(app)
+    await app.initialize()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("status", status))
