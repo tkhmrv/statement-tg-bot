@@ -1,5 +1,7 @@
 import os
 import logging
+import asyncio
+import httpx
 from dotenv import load_dotenv
 from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove, BotCommand
@@ -114,6 +116,21 @@ async def set_commands(app: Application):
     ]
     await app.bot.set_my_commands(commands)
 
+# Функция ожидания готовности сервера
+async def wait_for_server_ready(url, timeout=30):
+    for i in range(timeout):
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.get(f"{url}/ping", timeout=3)
+                if r.status_code == 200 and "pong" in r.text.lower():
+                    logging.info("✅ Сервер готов к приему webhook.")
+                    return
+        except Exception:
+            pass
+        logging.info(f"⏳ Ожидание сервера... ({i+1}/{timeout})")
+        await asyncio.sleep(1)
+    raise TimeoutError("⛔ Сервер так и не стал доступен для Telegram")
+
 # === Main run ===
 
 async def main():
@@ -138,14 +155,23 @@ async def main():
     # Регистрируем обработчик во Flask
     flask_app.add_url_rule(WEBHOOK_PATH, "webhook", lambda: webhook_handler(request), methods=["POST"])
 
-    # Устанавливаем webhook
+    # Стартуем Flask в фоне
+    port = int(os.environ.get("PORT", 3000))
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, lambda: flask_app.run(host="0.0.0.0", port=port))
+
+    # Ожидаем, пока сервер станет доступен
+    await wait_for_server_ready(WEBHOOK_HOST)
+
+    # Установка webhook
     await app.bot.delete_webhook(drop_pending_updates=True)
     await app.bot.set_webhook(url=WEBHOOK_URL)
+    logging.info(f"✅ Вебхук установлен: {WEBHOOK_URL}")
 
-    port = int(os.environ.get("PORT", 3000))
-    flask_app.run(host="0.0.0.0", port=port)
+    # Бесконечная пауза — чтобы процесс не завершался
+    while True:
+        await asyncio.sleep(3600)
 
 # Запуск асинхронной функции main
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(main())
