@@ -146,8 +146,8 @@ async def main():
     app.add_handler(CallbackQueryHandler(button_handler))
 
     # Webhook-обработчик
-    async def webhook_handler_async(request_data):
-        update = Update.de_json(request_data.decode("utf-8"), app.bot)
+    async def webhook_handler_async(json_data):
+        update = Update.de_json(json_data, app.bot)
         await app.process_update(update)
         return "OK", 200
 
@@ -156,9 +156,8 @@ async def main():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            # Получаем данные синхронно
-            request_data = request.get_data()
-            return loop.run_until_complete(webhook_handler_async(request_data))
+            json_data = request.get_json(force=True)  # тут уже dict
+            return loop.run_until_complete(webhook_handler_async(json_data))
         finally:
             loop.close()
 
