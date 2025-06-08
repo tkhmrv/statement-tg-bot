@@ -1,3 +1,4 @@
+from ping_server import start_ping_server
 import logging
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove, BotCommand
@@ -9,11 +10,13 @@ from telegram.ext import (
 )
 from dotenv import load_dotenv
 
+start_ping_server()
+
 # Загрузка переменных окружения
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# Логгирование под Railway
+# Логгирование
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     level=logging.INFO
